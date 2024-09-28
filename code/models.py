@@ -23,6 +23,7 @@ class History(Base):
     category = Column(Integer, nullable=False, comment="카테고리") #1. 공부 2. 운동 3. 취미
     created_at = Column(DateTime, default=func.now(), comment="생성일")
     duration = Column(Integer, nullable=False, comment="시간 (초)")
+    content = Column(Text, comment="내용")
     
     user = relationship("User", back_populates="histories")
 
