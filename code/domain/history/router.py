@@ -272,8 +272,11 @@ async def get_ranking(
     
     result = history_crud.get_ranking(db, current_user.id, category)
     
-    print(result)
-    return result
+    return [history_schema.Ranking(
+        username=i.username,
+        total_duration=i.total_duration,
+        level=i.total_duration//480+1,
+        ) for i in result]
 
 
 @router.get("/weekly", response_model=history_schema.Weekly)
