@@ -167,6 +167,51 @@ async def get_my_history(
     - durations: 
         - study: 
             - duration: int
+        - exercise:
+            - duration: int
+        - hobby:
+            - duration: int
+    """
+    
+    # 현재 날짜 및 7일 전 날짜 계산
+    today = datetime.now()
+    seven_days_ago = today - timedelta(days=7)
+
+    # 카테고리별 데이터 초기화
+    durations = {
+        'study': {'duration': 0, 'message': ''},
+        'exercise': {'duration': 0, 'message': ''},
+        'hobby': {'duration': 0, 'message': ''}
+    }
+    
+    # 현재 달의 기록 합산 및 최근 7일 기록 수집
+    recent_activity = []
+    
+    histories = db.query(History).filter(
+        History.user_id == current_user.id,
+        History.created_at >= today.replace(day=1)  # 현재 달의 첫 날부터
+    ).all()
+    
+    for history in histories:
+        if history.created_at >= seven_days_ago:
+            category_name = get_category_name(history.category)  # 카테고리 이름 변환
+            durations[category_name]['duration'] += history.duration
+
+    return durations
+
+
+
+@router.get("/megpt", response_model=history_schema.MyInfo)
+async def get_my_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """# 내 기록 조회 (gpt이용)
+    
+    ## Response Body
+    - durations: 
+        - study: 
+            - duration: int
             - message: str
         - exercise:
             - duration: int
