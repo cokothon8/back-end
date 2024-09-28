@@ -46,7 +46,7 @@ async def create_history(
     return history_crud.create_history(db, history_create, current_user)
 
 
-async def get_category_name(category_id: int) -> str:
+def get_category_name(category_id: int) -> str:
     """카테고리 ID를 카테고리 이름으로 변환하는 함수."""
     category_mapping = {
         1: 'study',
@@ -105,7 +105,8 @@ async def get_my_history(
             recent_activity.append({
                 'date': history.created_at.strftime("%Y-%m-%d"),
                 'category': category_name,
-                'duration': history.duration
+                'duration': history.duration,
+                'content': history.content
             })
 
     # OpenAI API를 사용하여 메시지 생성
@@ -124,7 +125,7 @@ async def get_my_history(
             durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[act['category']]}" + "\n".join(
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[category_name]}" + "\n".join(
                 [f"{act['date']}에 {act['content']}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
             
@@ -276,7 +277,7 @@ async def get_ranking(
 
 
 @router.get("/weekly", response_model=history_schema.Weekly)
-async def get_my_history_weekly(
+def get_my_history_weekly(
     year: int = Query(None, ge=2000, le=2100),
     month: int = Query(None, ge=1, le=12),
     week: int = Query(None, ge=1, le=5),
