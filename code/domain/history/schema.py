@@ -8,11 +8,15 @@ class HistoryCreate(BaseModel):
     duration: int
     content: Optional[str] = None
 
-class MyInfo(BaseModel):
-    durations: Dict[int, int]  # 타입 어노테이션 추가
 
-    class Config:
-        orm_mode = True
+class Character(BaseModel):
+    duration: int
+    message: str
+
+class MyInfo(BaseModel):
+    study: Character
+    exercise: Character
+    etc: Character
 
 
 class Ranking(BaseModel):
