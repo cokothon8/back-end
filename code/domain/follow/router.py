@@ -1,19 +1,12 @@
-from datetime import timedelta, datetime
-import random
-import re
-import string
-from typing import Optional
 from domain.user.router import get_current_user
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from starlette import status
-from starlette.config import Config
 
 from database import get_db
 from domain.follow import crud as follow_crud
 from domain.follow import schema as follow_schema
-from werkzeug.security import check_password_hash
 
 from models import FriendRelation
 
@@ -28,7 +21,7 @@ async def follow(
     db: Session = Depends(get_db)
 ):
     """
-    # 언팔로우 엔드포인트
+    # 팔로우 엔드포인트
     
     
     ## Path Parameter
@@ -81,7 +74,7 @@ async def follow(
     db: Session = Depends(get_db)
 ):
     """
-    # 팔로우하기 엔드포인트
+    # 언팔로우 엔드포인트
     
     
     ## Path Parameter
