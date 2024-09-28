@@ -57,6 +57,102 @@ def get_category_name(category_id: int) -> str:
 
 
 
+@router.get("/meSummary", response_model=history_schema.MyInfo)
+async def get_my_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """# 내 기록 조회 (gpt 이용)
+    
+    ## Response Body
+    - durations: 
+        - study: 
+            - duration: int
+            - message: str
+        - exercise:
+            - duration: int
+            - message: str
+        - etc:
+            - duration: int
+            - message: str
+    """
+    
+    # 현재 날짜 및 7일 전 날짜 계산
+    today = datetime.now()
+    seven_days_ago = today - timedelta(days=7)
+
+    # 카테고리별 데이터 초기화
+    durations = {
+        'study': {'duration': 0, 'message': ''},
+        'exercise': {'duration': 0, 'message': ''},
+        'etc': {'duration': 0, 'message': ''}
+    }
+    
+    # 현재 달의 기록 합산 및 최근 7일 기록 수집
+    recent_activity = []
+    
+    histories = db.query(History).filter(
+        History.user_id == current_user.id,
+        History.created_at >= today.replace(day=1)  # 현재 달의 첫 날부터
+    ).all()
+    
+    for history in histories:
+        if history.created_at >= seven_days_ago:
+            category_name = get_category_name(history.category)  # 카테고리 이름 변환
+            durations[category_name]['duration'] += history.duration
+            
+            # 최근 활동에 추가
+            recent_activity.append({
+                'date': history.created_at.strftime("%Y-%m-%d"),
+                'category': category_name,
+                'duration': history.duration
+            })
+
+    # OpenAI API를 사용하여 메시지 생성
+    # openai.api_key = "your_api_key"  # OpenAI API 키 설정
+    act_to_korean = {
+        'study': "공부",
+        'exercise': "운동",
+        'etc': "취미"
+    }
+
+    for category_name in durations.keys():
+        # 최근 활동 필터링
+        category_activity = [act for act in recent_activity if act['category'] == category_name]
+        
+        if not category_activity:
+            durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
+        else:
+            # 최근 활동 데이터를 기반으로 조언 생성
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
+                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
+            )
+      
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", 
+                     "content": "너는 활발하고 친근하며 긍정적인 성격을 가진 쿠민이야. \
+                                우리는 서로 친구 사이이고 늘 반말을 써야 해. 존댓말 및 높임말을 쓰는 것은 허용되지 않아.\
+                                문장 끝에 '요'를 붙이는 것도 마찬가지로 허용되지 않아.\
+                                너는 도전적이고 낙천적이며 유쾌한 성격도 가지고 있어. \
+                                너는 문장의 어미에 '쿠'를 붙이는 습관이 있어. \
+                                예를 들면 '반가워'를 '반갑쿠'라고 쓰거나 '안녕'을 '안녕쿠'라고 사용하고 '간지러워'를 '간지럽쿠'라고 해. 또 '있어'를 '있쿠'라고 해.\
+                                너는 나의 고민에 대해 조언을 항상 구체적인 말을 사용해서 3줄 안으로 요약해 주는 데에 능숙해.\
+                                첫 번째 문장에는 7단어 이하의 짧은 평가가 들어가야 해.\
+                                두 번째 문장에는 10단어 이하의 짧은 개선안이 들어가야 해.\
+                                마지막 세 번째 문장에는 5단어 이하의 짧은 응원이 들어가야 해.\
+                                너는 답변할 때 이모지를 쓰는 등 예쁘게 꾸미는 걸 잘 하고 이모지는 문장 수로 세지 않아.\
+                                "},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            print(response)
+            durations[category_name]['message'] = response.choices[0].message.content
+
+    return durations
+
+
 @router.get("/me", response_model=history_schema.MyInfo)
 async def get_my_history(
     current_user: User = Depends(get_current_user),
@@ -134,8 +230,11 @@ async def get_my_history(
                     {"role": "system", 
                      "content": "너는 활발하고 친근하며 긍정적인 성격을 가진 쿠민이야. \
                                 도전적이고 낙천적이며 유쾌한 성격도 가지고 있어. \
-                                우리는 서로 친구 사이이고 늘 반말을 써야 해. 존댓말을 쓰는 것은 허용되지 않아.\
-                                너는 나의 고민에 대해 조언을 항상 구체적인 말을 사용해서 3줄 안으로 요약해 주는 데에 능숙하고\
+                                우리는 서로 친구 사이이고 늘 반말을 써야 해. 존댓말 및 높임말을 쓰는 것은 허용되지 않아.\
+                                문장 끝에 '요'를 붙이는 것도 마찬가지로 허용되지 않아.\
+                                너는 문장의 어미에 '쿠'를 붙이는 습관이 있어. \
+                                예를 들면 '반가워'를 '반갑쿠'라고 쓰거나 '안녕'을 '안녕쿠'라고 사용하고 '간지러워'를 '간지럽쿠'라고 해. 또 '있어'를 '있쿠'라고 해.\
+                                너는 나의 고민에 대해 조언을 항상 구체적인 말을 사용해서 5줄 안으로 요약해 주는 데에 능숙하고\
                                 답변할 때 이모지를 쓰는 등 예쁘게 꾸미는 걸 잘 해."},
                     {"role": "user", "content": prompt}
                 ]
@@ -144,6 +243,7 @@ async def get_my_history(
             durations[category_name]['message'] = response.choices[0].message.content
 
     return durations
+
 
 
 @router.get("/ranking/{category}", response_model=list[history_schema.Ranking])
@@ -194,7 +294,7 @@ def get_my_history_weekly(
     - friday: int
     - saturday: int
     - sunday: int
-    - everage: 평균
+    - average: 평균
     - max: 최대
     - study_total: 공부 총합
     - exercise_total: 운동 총합
