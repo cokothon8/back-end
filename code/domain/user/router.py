@@ -25,7 +25,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(config('REFRESH_TOKEN_EXPIRE_DAYS'))
 SECRET_KEY = config('SECRET_KEY')
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/token")
-oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="/users/refresh-token")
+oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 router = APIRouter(
     prefix="/users",
