@@ -16,12 +16,17 @@ from domain.user.router import get_current_user
 from domain.history import crud as history_crud
 from domain.history import schema as history_schema
 
+import openai
+
 from models import *
+from starlette.config import Config
+
+config = Config('.env')
+openai.api_key  = config('OPENAI_API_KEY')
 
 router = APIRouter(
     prefix="/history",
 )
-
 
 @router.post("")
 async def create_history(
@@ -40,6 +45,18 @@ async def create_history(
     
     return history_crud.create_history(db, history_create, current_user)
 
+
+def get_category_name(category_id: int) -> str:
+    """카테고리 ID를 카테고리 이름으로 변환하는 함수."""
+    category_mapping = {
+        1: 'study',
+        2: 'exercise',
+        3: 'etc'
+    }
+    return category_mapping.get(category_id, 'etc')  # 기본값으로 'etc' 반환
+
+
+
 @router.get("/me", response_model=history_schema.MyInfo)
 async def get_my_history(
     current_user: User = Depends(get_current_user),
@@ -49,24 +66,74 @@ async def get_my_history(
     
     ## Response Body
     - durations: 
-        - 1: 이번달 공부 시간 (초)
-        - 2: 이번달 운동 시간 (초)
-        - 3: 이번달 기타 시간 (초)
+        - study: 
+            - duration: int
+            - message: str
+        - exercise:
+            - duration: int
+            - message: str
+        - etc:
+            - duration: int
+            - message: str
     """
     
-    result = history_crud.get_my_history(db, current_user)
-    categories = [1, 2, 3]
-    history_dict = {row.category: row.total_duration for row in result}
-    full_result = {
-        cat: history_dict.get(cat, 0)
-        for cat in categories
+    # 현재 날짜 및 7일 전 날짜 계산
+    today = datetime.now()
+    seven_days_ago = today - timedelta(days=7)
+
+    # 카테고리별 데이터 초기화
+    durations = {
+        'study': {'duration': 0, 'message': ''},
+        'exercise': {'duration': 0, 'message': ''},
+        'etc': {'duration': 0, 'message': ''}
     }
-    print(full_result)
     
+    # 현재 달의 기록 합산 및 최근 7일 기록 수집
+    recent_activity = []
     
-    return history_schema.MyInfo(
-        durations=full_result
-    )
+    histories = db.query(History).filter(
+        History.user_id == current_user.id,
+        History.created_at >= today.replace(day=1)  # 현재 달의 첫 날부터
+    ).all()
+    
+    for history in histories:
+        if history.created_at >= seven_days_ago:
+            category_name = get_category_name(history.category)  # 카테고리 이름 변환
+            durations[category_name]['duration'] += history.duration
+            
+            # 최근 활동에 추가
+            recent_activity.append({
+                'date': history.created_at.strftime("%Y-%m-%d"),
+                'category': category_name,
+                'duration': history.duration
+            })
+
+    # OpenAI API를 사용하여 메시지 생성
+    # openai.api_key = "your_api_key"  # OpenAI API 키 설정
+
+    for category_name in durations.keys():
+        # 최근 활동 필터링
+        category_activity = [act for act in recent_activity if act['category'] == category_name]
+        
+        if not category_activity:
+            durations[category_name]['message'] = f"최근 {7}일 동안 {category_name}을(를) 하지 않았습니다. 오늘은 {category_name}을(를) 해보는 건 어떨까요?"
+        else:
+            # 최근 활동 데이터를 기반으로 조언 생성
+            prompt = f"다음 기록을 바탕으로 조언을 주세요:\n" + "\n".join(
+                [f"{act['date']}에 {act['category']}을(를) {act['duration']}초 동안 했습니다." for act in category_activity]
+            )
+      
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "당신은 활동에 대한 조언을 해주는 도우미입니다."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            print(response)
+            durations[category_name]['message'] = response.choices[0].message.content
+
+    return durations
 
 
 @router.get("/ranking/{category}", response_model=list[history_schema.Ranking])
