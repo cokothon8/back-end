@@ -21,26 +21,86 @@ router = APIRouter(
     prefix="/follow",
 )
 
-@router.post('/follow/{follower}', response_model=follow_schema.followingUser)
+@router.post('/{followee}', response_model=follow_schema.followingUser)
 async def follow(
-    follower: follow_schema.followingUser,
+    followee: str,
     current_user: FriendRelation = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     ## 팔로우하기 엔드포인트
-    - follower : 팔로우당할 사람
+    - followee : 팔로우당할 사람
     - current_user : 현재 사용자
     """
     
     # check username
-    user = follow_crud.followUser(db, current_user.id, follower.username)
+    user = follow_crud.getUsername(db, followee)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username is unavailable."
+        )
+    elif user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot follow myself"
+        )
+        
+    if follow_crud.isFollowed(db, current_user.id, followee):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Already Followed."
+        )
+        
+        
+    # follow user
+    
+    follow_crud.followUser(db, current_user.id, followee)
+    
+    return follow_schema.followingUser(
+        username=followee
+    )
+    
+    
+    
+@router.delete('/{followee}', response_model=follow_schema.followingUser)
+async def follow(
+    followee: str,
+    current_user: FriendRelation = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    ## 팔로우하기 엔드포인트
+    - followee : 팔로우당할 사람
+    - current_user : 현재 사용자
+    """
+    
+    # check username
+    user = follow_crud.getUsername(db, followee)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username is unavailable."
         )
     
+    elif user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot unfollow myself"
+        )
+        
+        
+    if not follow_crud.isFollowed(db, current_user.id, followee):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Already Unfollowed."
+        )
+        
+        
     # follow user
     
-    return follow_crud.followUser(db, follower, current_user)
+    follow_crud.unfollowUser(db, current_user.id, followee)
+    
+    return follow_schema.followingUser(
+        username=followee
+    )

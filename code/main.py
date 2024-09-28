@@ -3,6 +3,9 @@ from starlette.middleware.cors import CORSMiddleware
 
 from domain.user import router as user_router
 from domain.history import router as history_router
+from domain.follow import router as follow_router
+
+
 
 tags_metadata = [
     {
@@ -38,3 +41,4 @@ app.add_middleware(
 
 app.include_router(user_router.router, tags=["users"])
 app.include_router(history_router.router, tags=["history"])
+app.include_router(follow_router.router, tags=["friend"])
