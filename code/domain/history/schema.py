@@ -20,3 +20,18 @@ class Ranking(BaseModel):
 
     class Config:
         orm_mode = True
+        
+
+class Weekly(BaseModel):
+    monday: int
+    tuesday: int
+    wednesday: int
+    thursday: int
+    friday: int
+    saturday: int
+    sunday: int
+    average: int
+    max: int
+    study_total: int
+    exercise_total: int
+    etc_total: int
