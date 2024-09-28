@@ -14,43 +14,51 @@ router = APIRouter(
     prefix="/history/experience",
 )
 
-@router.get('/{category}', response_model=experience_schema.experience)
+@router.get('', response_model=experience_schema.experience)
 async def searchDuration(
-    category: int, #1: 공부, 2: 운동, 3: 취미
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     # 경험치 조회 엔드포인트
-    
-    
-    ## Path Parameter
-    - category: int
-    
+        
     ## Response
-    - category: int (1. 공부, 2. 운동, 3. 취미)
-    - duration: int (초)
+    - study_total: int
+    - exercise_total: int
+    - hobby_total: int
     
     ##Response Code
     - 200: Success
-    - 400: Bad Request  (Category is unavailable.)
     """
-    
-    # check category
-    if not category:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Category is unavailable."
-        )
         
     # return duration
     
-    categoryDurationList = experience_crud.searchCategoryDuration(db, current_user.id, category)
-    durationlist = list()
+    categoryDurationList = experience_crud.searchCategoryDuration(db, current_user.id)
+    studydurationlist = list()
+    exercisedurationlist = list()
+    hobbydurationlist = list()
     for i in categoryDurationList:
-        durationlist.append(i.duration)
-    duration = sum(durationlist)
+        if i.category == 1: # 공부
+            studydurationlist.append(i.duration)
+        elif i.category == 2: # 운동
+            exercisedurationlist.append(i.duration)
+        elif i.category == 3: # 취미
+            hobbydurationlist.append(i.duration)
+    study_total = sum(studydurationlist)
+    exercise_total = sum(exercisedurationlist)
+    hobby_total = sum(hobbydurationlist)
+    max_value = max(study_total, exercise_total, hobby_total)
+    max_category = 0
+    if max_value == study_total:
+        max_category = 1
+    elif max_value == exercise_total:
+        max_category = 2
+    elif max_value == hobby_total:
+        max_category = 3
+        
     return experience_schema.experience(
-        category = category,
-        duration = duration
+        study_total = study_total,
+        exercise_total =  exercise_total,
+        hobby_total = hobby_total,
+        max_category = max_category
     )
