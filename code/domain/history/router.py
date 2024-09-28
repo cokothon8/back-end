@@ -66,3 +66,28 @@ async def get_my_history(
     return history_schema.MyInfo(
         durations=full_result
     )
+
+
+@router.get("/ranking/{category}", response_model=list[history_schema.Ranking])
+async def get_ranking(
+    category: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """# 랭킹 조회
+    
+    자신이 팔로우하는 사람들의 랭킹을 조회합니다.
+    
+    ## Request Query
+    - category: int (1: 공부, 2: 운동, 3: 기타)
+    
+    ## Response Body
+    - ranking: List
+        - username: str
+        - duration: int
+    """
+    
+    result = history_crud.get_ranking(db, current_user.id, category)
+    
+    print(result)
+    return result

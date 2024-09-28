@@ -12,3 +12,11 @@ class MyInfo(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class Ranking(BaseModel):
+    username: str
+    total_duration: int
+
+    class Config:
+        orm_mode = True
