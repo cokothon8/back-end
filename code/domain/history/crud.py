@@ -11,6 +11,7 @@ def create_history(db: Session, history_create: HistoryCreate, current_user: Use
         user_id=current_user.id,
         category=history_create.category,
         duration=history_create.duration,
+        content=history_create.content
     )
     db.add(db_history)
     db.commit()

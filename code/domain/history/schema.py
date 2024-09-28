@@ -6,6 +6,7 @@ from typing import Optional, Dict
 class HistoryCreate(BaseModel):
     category: int
     duration: int
+    content: Optional[str] = None
 
 class MyInfo(BaseModel):
     durations: Dict[int, int]  # 타입 어노테이션 추가

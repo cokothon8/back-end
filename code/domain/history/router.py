@@ -34,6 +34,7 @@ async def create_history(
     ## Request Body
     - category: int (1: 공부, 2: 운동, 3: 기타)
     - duration: int (초 단위)
+    - content: str (내용)
     """
     
     
