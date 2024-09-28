@@ -37,7 +37,7 @@ async def create_history(
     """# 기록 추가
     
     ## Request Body
-    - category: int (1: 공부, 2: 운동, 3: 기타)
+    - category: int (1: 공부, 2: 운동, 3: 취미)
     - duration: int (초 단위)
     - content: str (내용)
     """
@@ -51,9 +51,9 @@ def get_category_name(category_id: int) -> str:
     category_mapping = {
         1: 'study',
         2: 'exercise',
-        3: 'etc'
+        3: 'hobby'
     }
-    return category_mapping.get(category_id, 'etc')  # 기본값으로 'etc' 반환
+    return category_mapping.get(category_id, 'hobby')
 
 
 
@@ -72,7 +72,7 @@ async def get_my_history(
         - exercise:
             - duration: int
             - message: str
-        - etc:
+        - hobby:
             - duration: int
             - message: str
     """
@@ -85,7 +85,7 @@ async def get_my_history(
     durations = {
         'study': {'duration': 0, 'message': ''},
         'exercise': {'duration': 0, 'message': ''},
-        'etc': {'duration': 0, 'message': ''}
+        'hobby': {'duration': 0, 'message': ''}
     }
     
     # 현재 달의 기록 합산 및 최근 7일 기록 수집
@@ -113,7 +113,7 @@ async def get_my_history(
     act_to_korean = {
         'study': "공부",
         'exercise': "운동",
-        'etc': "취미"
+        'hobby': "취미"
     }
 
     for category_name in durations.keys():
@@ -124,9 +124,11 @@ async def get_my_history(
             durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
-                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[act['category']]}" + "\n".join(
+                [f"{act['date']}에 {act['content']}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
+            
+            print(prompt)
       
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -168,7 +170,7 @@ async def get_my_history(
         - exercise:
             - duration: int
             - message: str
-        - etc:
+        - hobby:
             - duration: int
             - message: str
     """
@@ -181,7 +183,7 @@ async def get_my_history(
     durations = {
         'study': {'duration': 0, 'message': ''},
         'exercise': {'duration': 0, 'message': ''},
-        'etc': {'duration': 0, 'message': ''}
+        'hobby': {'duration': 0, 'message': ''}
     }
     
     # 현재 달의 기록 합산 및 최근 7일 기록 수집
@@ -201,7 +203,8 @@ async def get_my_history(
             recent_activity.append({
                 'date': history.created_at.strftime("%Y-%m-%d"),
                 'category': category_name,
-                'duration': history.duration
+                'duration': history.duration,
+                'content': history.content
             })
 
     # OpenAI API를 사용하여 메시지 생성
@@ -209,7 +212,7 @@ async def get_my_history(
     act_to_korean = {
         'study': "공부",
         'exercise': "운동",
-        'etc': "취미"
+        'hobby': "취미"
     }
 
     for category_name in durations.keys():
@@ -220,9 +223,10 @@ async def get_my_history(
             durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
-                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[category_name]}" + "\n".join(
+                [f"{act['date']}에 {act['content']}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
+            print(prompt)
       
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -298,102 +302,91 @@ def get_my_history_weekly(
     - max: 최대
     - study_total: 공부 총합
     - exercise_total: 운동 총합
-    - etc_total: 기타 총합
+    - hobby_total: 기타 총합
     """
     
-    
-    # 주간 시작일과 종료일 계산
-    if year is None or month is None or week is None:
-        raise HTTPException(status_code=400, detail="Year, month, and week must be provided.")
+    # 주의 시작일과 종료일 계산
+    first_day_of_week = datetime(year, month, 1) + timedelta(weeks=week - 1)
+    last_day_of_week = first_day_of_week + timedelta(days=6)
 
-    first_day_of_month = datetime(year, month, 1)
-    first_day_of_week = first_day_of_month + timedelta(weeks=week - 1)
-
-    # 주간 시작일 (월요일)과 종료일 (일요일)
-    monday = first_day_of_week - timedelta(days=first_day_of_week.weekday())
-    sunday = monday + timedelta(days=6)
-
-    # 요일별 duration 집계
-    week_data = {
-        "monday": 0,
-        "tuesday": 0,
-        "wednesday": 0,
-        "thursday": 0,
-        "friday": 0,
-        "saturday": 0,
-        "sunday": 0,
-        "study_total": 0,
-        "exercise_total": 0,
-        "etc_total": 0,
-        "average": 0,
-        "max": 0,
-    }
-
-    results = db.query(
-        History.category,
-        func.sum(History.duration).label("total_duration")
+    # 해당 주의 모든 기록을 가져오는 쿼리
+    records = db.query(
+        History.created_at,
+        History.duration,
+        History.category
     ).filter(
         History.user_id == current_user.id,
-        History.created_at >= monday,
-        History.created_at <= sunday
-    ).group_by(History.category).all()
+        History.created_at >= first_day_of_week,
+        History.created_at < last_day_of_week + timedelta(days=1)
+    ).all()
 
-    # 카테고리별 duration 집계
-    for category, total_duration in results:
-        if category == 1:  # 공부
-            week_data["study_total"] += total_duration
-        elif category == 2:  # 운동
-            week_data["exercise_total"] += total_duration
-        elif category == 3:  # 기타
-            week_data["etc_total"] += total_duration
+    # 각 요일별 총합 및 카테고리별 총합 초기화
+    daily_sums = {day: 0 for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+    category_totals = {
+        "study_total": 0,
+        "exercise_total": 0,
+        "hobby_total": 0
+    }
 
-        # 요일별 총합 집계
-        for i in range(7):
-            day = monday + timedelta(days=i)
-            if day.date() == category:
-                week_data[day.strftime("%A").lower()] += total_duration
+    # 기록 처리
+    for record in records:
+        day_of_week = record.created_at.strftime('%A').lower()  # 요일 이름 (예: monday)
+        daily_sums[day_of_week] += record.duration  # 해당 요일에 duration 추가
 
-    # 평균과 최대값 계산
-    total_duration = (
-        week_data["study_total"] +
-        week_data["exercise_total"] +
-        week_data["etc_total"]
+        # 카테고리별 총합 업데이트
+        if record.category == 1:  # 공부 카테고리
+            category_totals['study_total'] += record.duration
+        elif record.category == 2:  # 운동 카테고리
+            category_totals['exercise_total'] += record.duration
+        elif record.category == 3:  # 기타 카테고리
+            category_totals['hobby_total'] += record.duration
+
+    # 평균 및 최대값 계산
+    total_duration = sum(daily_sums.values())
+    average = total_duration // 7 if total_duration else 0  # 주간 평균
+    max_value = max(daily_sums.values()) if daily_sums.values() else 0  # 최대값
+
+    return history_schema.Weekly(
+        monday=daily_sums['monday'],
+        tuesday=daily_sums['tuesday'],
+        wednesday=daily_sums['wednesday'],
+        thursday=daily_sums['thursday'],
+        friday=daily_sums['friday'],
+        saturday=daily_sums['saturday'],
+        sunday=daily_sums['sunday'],
+        average=average,
+        max=max_value,
+        study_total=category_totals['study_total'],
+        exercise_total=category_totals['exercise_total'],
+        hobby_total=category_totals['hobby_total'],
     )
-    
-    week_data["average"] = int(total_duration / 7 if total_duration else 0)
-    week_data["max"] = max(week_data["study_total"], week_data["exercise_total"], week_data["etc_total"])
-
-    return week_data
-
 
 @router.get("/monthly", response_model=history_schema.Monthly)
 async def get_my_history_monthly(
     year: int = Query(None, ge=2000, le=2100),
-    month: int = Query(None, ge=1, le=12),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """# 월간 기록 조회
+    """# 월별 기록 조회
     
     ## Request Query
     - year: int (2000 ~ 2100)
-    - month: int (1 ~ 12)
     
     ## Response Body
-    - days: List[int]
+    - months: List[int]
     - average: int
     - max: int
     - study_total: int
     - exercise_total: int
-    - etc_total: int
+    - hobby_total: int
     """
     
 
     # 일별 기록 조회
-    days = [0] * 31  # 최대 31일로 초기화
+    months = [0] * 12  # 최대 12달로 초기화
     study_total = 0
     exercise_total = 0
-    etc_total = 0
+    hobby_total = 0
 
     # 해당 월의 기록 조회
     records = db.query(
@@ -402,14 +395,13 @@ async def get_my_history_monthly(
         History.category
     ).filter(
         History.user_id == current_user.id,
-        func.extract("year", History.created_at) == year,
-        func.extract("month", History.created_at) == month
+        func.extract("year", History.created_at) == year
     ).all()
 
     # 기록 처리
     for record in records:
-        day = int(record.created_at.day) - 1  # 0-indexed
-        days[day] += record.duration
+        month = int(record.created_at.month) - 1  # 0-indexed
+        months[month] += record.duration
 
         # 카테고리에 따라 총합 계산
         if record.category == 1:
@@ -417,18 +409,18 @@ async def get_my_history_monthly(
         elif record.category == 2:
             exercise_total += record.duration
         elif record.category == 3:
-            etc_total += record.duration
+            hobby_total += record.duration
 
     # 평균과 최대 값 계산
-    total_duration = sum(days)
-    average = total_duration // (len([day for day in days if day > 0]) or 1)
-    max_duration = max(days)
+    total_duration = sum(months)
+    average = total_duration // (len([month for month in months if month > 0]) or 1)
+    max_duration = max(months)
 
     return history_schema.Monthly(
-        days=days,
+        months=months,
         average=average,
         max=max_duration,
         study_total=study_total,
         exercise_total=exercise_total,
-        etc_total=etc_total
+        hobby_total=hobby_total
     )

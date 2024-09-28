@@ -16,7 +16,7 @@ class Character(BaseModel):
 class MyInfo(BaseModel):
     study: Character
     exercise: Character
-    etc: Character
+    hobby: Character
 
 
 class Ranking(BaseModel):
@@ -39,13 +39,13 @@ class Weekly(BaseModel):
     max: int
     study_total: int
     exercise_total: int
-    etc_total: int
+    hobby_total: int
 
 
 class Monthly(BaseModel):
-    days: list[int]
+    months: list[int]
     average: int
     max: int
     study_total: int
     exercise_total: int
-    etc_total: int
+    hobby_total: int
