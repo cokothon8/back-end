@@ -43,7 +43,7 @@ class Weekly(BaseModel):
 
 
 class Monthly(BaseModel):
-    days: list[int]
+    months: list[int]
     average: int
     max: int
     study_total: int

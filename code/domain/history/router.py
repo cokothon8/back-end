@@ -373,18 +373,16 @@ def get_my_history_weekly(
 @router.get("/monthly", response_model=history_schema.Monthly)
 async def get_my_history_monthly(
     year: int = Query(None, ge=2000, le=2100),
-    month: int = Query(None, ge=1, le=12),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """# 월간 기록 조회
+    """# 월별 기록 조회
     
     ## Request Query
     - year: int (2000 ~ 2100)
-    - month: int (1 ~ 12)
     
     ## Response Body
-    - days: List[int]
+    - months: List[int]
     - average: int
     - max: int
     - study_total: int
@@ -394,7 +392,7 @@ async def get_my_history_monthly(
     
 
     # 일별 기록 조회
-    days = [0] * 31  # 최대 31일로 초기화
+    months = [0] * 12  # 최대 12달로 초기화
     study_total = 0
     exercise_total = 0
     hobby_total = 0
@@ -406,14 +404,13 @@ async def get_my_history_monthly(
         History.category
     ).filter(
         History.user_id == current_user.id,
-        func.extract("year", History.created_at) == year,
-        func.extract("month", History.created_at) == month
+        func.extract("year", History.created_at) == year
     ).all()
 
     # 기록 처리
     for record in records:
-        day = int(record.created_at.day) - 1  # 0-indexed
-        days[day] += record.duration
+        month = int(record.created_at.month) - 1  # 0-indexed
+        months[month] += record.duration
 
         # 카테고리에 따라 총합 계산
         if record.category == 1:
@@ -424,12 +421,12 @@ async def get_my_history_monthly(
             hobby_total += record.duration
 
     # 평균과 최대 값 계산
-    total_duration = sum(days)
-    average = total_duration // (len([day for day in days if day > 0]) or 1)
-    max_duration = max(days)
+    total_duration = sum(months)
+    average = total_duration // (len([month for month in months if month > 0]) or 1)
+    max_duration = max(months)
 
     return history_schema.Monthly(
-        days=days,
+        months=months,
         average=average,
         max=max_duration,
         study_total=study_total,
