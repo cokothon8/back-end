@@ -46,7 +46,7 @@ async def create_history(
     return history_crud.create_history(db, history_create, current_user)
 
 
-def get_category_name(category_id: int) -> str:
+async def get_category_name(category_id: int) -> str:
     """카테고리 ID를 카테고리 이름으로 변환하는 함수."""
     category_mapping = {
         1: 'study',
@@ -276,7 +276,7 @@ async def get_ranking(
 
 
 @router.get("/weekly", response_model=history_schema.Weekly)
-def get_my_history_weekly(
+async def get_my_history_weekly(
     year: int = Query(None, ge=2000, le=2100),
     month: int = Query(None, ge=1, le=12),
     week: int = Query(None, ge=1, le=5),
