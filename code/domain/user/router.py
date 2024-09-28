@@ -116,6 +116,7 @@ async def login_for_access_token(
     - access_token: str
     - token_type: str
     - refresh_token: str
+    - username: str
     
     ## Response Code
     - 200: Success
@@ -142,7 +143,8 @@ async def login_for_access_token(
     return user_schema.Token(
         access_token=access_token,
         token_type="bearer",
-        refresh_token=refresh_token
+        refresh_token=refresh_token,
+        username = form_data.username
     )
     
 
