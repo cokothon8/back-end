@@ -32,16 +32,13 @@ def get_my_history(db: Session, current_user: User):
 
 def get_ranking(db: Session, user_id: int, category: int):
     ## 사용자가 팔로우하는 사람들의 이번 달 카테고리별 기록 합계를 구하고, 내림차순으로 정렬
-    
     return db.query(
         User.username,
         func.coalesce(func.sum(History.duration), 0).label("total_duration")
     ).outerjoin(FriendRelation, User.id == FriendRelation.following_id) \
-     .outerjoin(History, User.id == History.user_id) \
+     .outerjoin(History, (User.id == History.user_id) & (History.category == category) & (History.created_at >= datetime.now().replace(day=1))) \
      .filter(
-         (FriendRelation.follower_id == user_id) | (User.id == user_id),
-         History.category == category,
-         History.created_at >= datetime.now().replace(day=1),
+         (FriendRelation.follower_id == user_id) | (User.id == user_id)
      ).group_by(User.username) \
      .order_by(desc("total_duration")) \
      .all()
