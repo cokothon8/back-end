@@ -294,7 +294,7 @@ def get_my_history_weekly(
     - friday: int
     - saturday: int
     - sunday: int
-    - everage: 평균
+    - average: 평균
     - max: 최대
     - study_total: 공부 총합
     - exercise_total: 운동 총합
