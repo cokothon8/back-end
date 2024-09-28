@@ -110,23 +110,33 @@ async def get_my_history(
 
     # OpenAI API를 사용하여 메시지 생성
     # openai.api_key = "your_api_key"  # OpenAI API 키 설정
+    act_to_korean = {
+        'study': "공부",
+        'exercise': "운동",
+        'etc': "취미"
+    }
 
     for category_name in durations.keys():
         # 최근 활동 필터링
         category_activity = [act for act in recent_activity if act['category'] == category_name]
         
         if not category_activity:
-            durations[category_name]['message'] = f"최근 {7}일 동안 {category_name}을(를) 하지 않았습니다. 오늘은 {category_name}을(를) 해보는 건 어떨까요?"
+            durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 주세요:\n" + "\n".join(
-                [f"{act['date']}에 {act['category']}을(를) {act['duration']}초 동안 했습니다." for act in category_activity]
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
+                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
       
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "당신은 활동에 대한 조언을 해주는 도우미입니다."},
+                    {"role": "system", 
+                     "content": "너는 활발하고 친근하며 긍정적인 성격을 가진 쿠민이야. \
+                                도전적이고 낙천적이며 유쾌한 성격도 가지고 있어. \
+                                우리는 서로 친구 사이이고 늘 반말을 써야 해. 존댓말을 쓰는 것은 허용되지 않아.\
+                                너는 나의 고민에 대해 조언을 항상 구체적인 말을 사용해서 3줄 안으로 요약해 주는 데에 능숙하고\
+                                답변할 때 이모지를 쓰는 등 예쁘게 꾸미는 걸 잘 해."},
                     {"role": "user", "content": prompt}
                 ]
             )
