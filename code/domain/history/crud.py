@@ -15,3 +15,14 @@ def create_history(db: Session, history_create: HistoryCreate, current_user: Use
     db.commit()
 
     return db_history
+
+
+def get_my_history(db: Session, current_user: User):
+    # 현재 달의 기록 조회
+    return db.query(
+        History.category,
+        func.sum(History.duration).label("total_duration")
+    ).filter(
+        History.user_id == current_user.id,
+        History.created_at >= datetime.now().replace(day=1),
+    ).group_by(History.category).all()
