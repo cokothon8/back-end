@@ -3,7 +3,7 @@ import random
 import re
 import string
 from typing import Optional
-
+from domain.user.router import get_current_user
 from fastapi import APIRouter, HTTPException, Query
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -24,33 +24,23 @@ router = APIRouter(
 @router.post('/follow/{follower}', response_model=follow_schema.followingUser)
 async def follow(
     follower: follow_schema.followingUser,
-    followee: follow_schema.followingUser,
+    current_user: FriendRelation = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """회원가입"""
+    """
+    ## 팔로우하기 엔드포인트
+    - follower : 팔로우당할 사람
+    - current_user : 현재 사용자
+    """
     
     # check username
-    user = follow_crud.get_user(db, _user_create.username)
-    if user:
+    user = follow_crud.followUser(db, current_user.id, follower.username)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken"
+            detail="Username is unavailable."
         )
     
-    # create user
-    user = user_crud.create_user(db, _user_create)
+    # follow user
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    refresh_token = create_refresh_token(
-        data={"sub": user.username}, expires_delta=refresh_token_expires
-    )
-    
-    return user_schema.Token(
-        access_token=access_token,
-        token_type="bearer",
-        refresh_token=refresh_token
-    )
+    return follow_crud.followUser(db, follower, current_user)
