@@ -2,4 +2,3 @@
 *.pyc
 tmp*
 venv/
-*.pptx
