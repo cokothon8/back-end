@@ -321,7 +321,8 @@ async def get_ranking(
         username=i.username,
         total_duration=i.total_duration,
         level=i.total_duration//480+1,
-        ) for i in result]
+        ranking=ii+1
+        ) for ii, i in enumerate(result)]
 
 
 @router.get("/weekly", response_model=history_schema.Weekly)
