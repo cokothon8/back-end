@@ -305,70 +305,61 @@ def get_my_history_weekly(
     - hobby_total: 기타 총합
     """
     
-    
-    # 주간 시작일과 종료일 계산
-    if year is None or month is None or week is None:
-        raise HTTPException(status_code=400, detail="Year, month, and week must be provided.")
+    # 주의 시작일과 종료일 계산
+    first_day_of_week = datetime(year, month, 1) + timedelta(weeks=week - 1)
+    last_day_of_week = first_day_of_week + timedelta(days=6)
 
-    first_day_of_month = datetime(year, month, 1)
-    first_day_of_week = first_day_of_month + timedelta(weeks=week - 1)
-
-    # 주간 시작일 (월요일)과 종료일 (일요일)
-    monday = first_day_of_week - timedelta(days=first_day_of_week.weekday())
-    sunday = monday + timedelta(days=6)
-
-    # 요일별 duration 집계
-    week_data = {
-        "monday": 0,
-        "tuesday": 0,
-        "wednesday": 0,
-        "thursday": 0,
-        "friday": 0,
-        "saturday": 0,
-        "sunday": 0,
-        "study_total": 0,
-        "exercise_total": 0,
-        "hobby_total": 0,
-        "average": 0,
-        "max": 0,
-    }
-
-    results = db.query(
-        History.category,
-        func.sum(History.duration).label("total_duration")
+    # 해당 주의 모든 기록을 가져오는 쿼리
+    records = db.query(
+        History.created_at,
+        History.duration,
+        History.category
     ).filter(
         History.user_id == current_user.id,
-        History.created_at >= monday,
-        History.created_at <= sunday
-    ).group_by(History.category).all()
+        History.created_at >= first_day_of_week,
+        History.created_at < last_day_of_week + timedelta(days=1)
+    ).all()
 
-    # 카테고리별 duration 집계
-    for category, total_duration in results:
-        if category == 1:  # 공부
-            week_data["study_total"] += total_duration
-        elif category == 2:  # 운동
-            week_data["exercise_total"] += total_duration
-        elif category == 3:  # 기타
-            week_data["hobby_total"] += total_duration
+    # 각 요일별 총합 및 카테고리별 총합 초기화
+    daily_sums = {day: 0 for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+    category_totals = {
+        "study_total": 0,
+        "exercise_total": 0,
+        "hobby_total": 0
+    }
 
-        # 요일별 총합 집계
-        for i in range(7):
-            day = monday + timedelta(days=i)
-            if day.date() == category:
-                week_data[day.strftime("%A").lower()] += total_duration
+    # 기록 처리
+    for record in records:
+        day_of_week = record.created_at.strftime('%A').lower()  # 요일 이름 (예: monday)
+        daily_sums[day_of_week] += record.duration  # 해당 요일에 duration 추가
 
-    # 평균과 최대값 계산
-    total_duration = (
-        week_data["study_total"] +
-        week_data["exercise_total"] +
-        week_data["hobby_total"]
+        # 카테고리별 총합 업데이트
+        if record.category == 1:  # 공부 카테고리
+            category_totals['study_total'] += record.duration
+        elif record.category == 2:  # 운동 카테고리
+            category_totals['exercise_total'] += record.duration
+        elif record.category == 3:  # 기타 카테고리
+            category_totals['hobby_total'] += record.duration
+
+    # 평균 및 최대값 계산
+    total_duration = sum(daily_sums.values())
+    average = total_duration // 7 if total_duration else 0  # 주간 평균
+    max_value = max(daily_sums.values()) if daily_sums.values() else 0  # 최대값
+
+    return history_schema.Weekly(
+        monday=daily_sums['monday'],
+        tuesday=daily_sums['tuesday'],
+        wednesday=daily_sums['wednesday'],
+        thursday=daily_sums['thursday'],
+        friday=daily_sums['friday'],
+        saturday=daily_sums['saturday'],
+        sunday=daily_sums['sunday'],
+        average=average,
+        max=max_value,
+        study_total=category_totals['study_total'],
+        exercise_total=category_totals['exercise_total'],
+        hobby_total=category_totals['hobby_total'],
     )
-    
-    week_data["average"] = int(total_duration / 7 if total_duration else 0)
-    week_data["max"] = max(week_data["study_total"], week_data["exercise_total"], week_data["hobby_total"])
-
-    return week_data
-
 
 @router.get("/monthly", response_model=history_schema.Monthly)
 async def get_my_history_monthly(
