@@ -37,7 +37,7 @@ async def create_history(
     """# 기록 추가
     
     ## Request Body
-    - category: int (1: 공부, 2: 운동, 3: 기타)
+    - category: int (1: 공부, 2: 운동, 3: 취미)
     - duration: int (초 단위)
     - content: str (내용)
     """
@@ -51,9 +51,9 @@ def get_category_name(category_id: int) -> str:
     category_mapping = {
         1: 'study',
         2: 'exercise',
-        3: 'etc'
+        3: 'hobby'
     }
-    return category_mapping.get(category_id, 'etc')  # 기본값으로 'etc' 반환
+    return category_mapping.get(category_id, 'hobby')
 
 
 
@@ -72,7 +72,7 @@ async def get_my_history(
         - exercise:
             - duration: int
             - message: str
-        - etc:
+        - hobby:
             - duration: int
             - message: str
     """
@@ -85,7 +85,7 @@ async def get_my_history(
     durations = {
         'study': {'duration': 0, 'message': ''},
         'exercise': {'duration': 0, 'message': ''},
-        'etc': {'duration': 0, 'message': ''}
+        'hobby': {'duration': 0, 'message': ''}
     }
     
     # 현재 달의 기록 합산 및 최근 7일 기록 수집
@@ -113,7 +113,7 @@ async def get_my_history(
     act_to_korean = {
         'study': "공부",
         'exercise': "운동",
-        'etc': "취미"
+        'hobby': "취미"
     }
 
     for category_name in durations.keys():
@@ -124,9 +124,11 @@ async def get_my_history(
             durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
-                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[act['category']]}" + "\n".join(
+                [f"{act['date']}에 {act['content']}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
+            
+            print(prompt)
       
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -168,7 +170,7 @@ async def get_my_history(
         - exercise:
             - duration: int
             - message: str
-        - etc:
+        - hobby:
             - duration: int
             - message: str
     """
@@ -181,7 +183,7 @@ async def get_my_history(
     durations = {
         'study': {'duration': 0, 'message': ''},
         'exercise': {'duration': 0, 'message': ''},
-        'etc': {'duration': 0, 'message': ''}
+        'hobby': {'duration': 0, 'message': ''}
     }
     
     # 현재 달의 기록 합산 및 최근 7일 기록 수집
@@ -201,7 +203,8 @@ async def get_my_history(
             recent_activity.append({
                 'date': history.created_at.strftime("%Y-%m-%d"),
                 'category': category_name,
-                'duration': history.duration
+                'duration': history.duration,
+                'content': history.content
             })
 
     # OpenAI API를 사용하여 메시지 생성
@@ -209,7 +212,7 @@ async def get_my_history(
     act_to_korean = {
         'study': "공부",
         'exercise': "운동",
-        'etc': "취미"
+        'hobby': "취미"
     }
 
     for category_name in durations.keys():
@@ -220,9 +223,10 @@ async def get_my_history(
             durations[category_name]['message'] = f"최근 {7}일 동안 {act_to_korean[category_name]}을(를) 하지 않았어! 오늘은 {act_to_korean[category_name]}을(를) 해보는 건 어떨까?"
         else:
             # 최근 활동 데이터를 기반으로 조언 생성
-            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n" + "\n".join(
-                [f"{act['date']}에 {act_to_korean[act['category']]}을(를) {act['duration']}초 동안 했다." for act in category_activity]
+            prompt = f"다음 기록을 바탕으로 조언을 해 줄 수 있어?:\n분야{act_to_korean[category_name]}" + "\n".join(
+                [f"{act['date']}에 {act['content']}을(를) {act['duration']}초 동안 했다." for act in category_activity]
             )
+            print(prompt)
       
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -298,7 +302,7 @@ def get_my_history_weekly(
     - max: 최대
     - study_total: 공부 총합
     - exercise_total: 운동 총합
-    - etc_total: 기타 총합
+    - hobby_total: 기타 총합
     """
     
     
@@ -324,7 +328,7 @@ def get_my_history_weekly(
         "sunday": 0,
         "study_total": 0,
         "exercise_total": 0,
-        "etc_total": 0,
+        "hobby_total": 0,
         "average": 0,
         "max": 0,
     }
@@ -345,7 +349,7 @@ def get_my_history_weekly(
         elif category == 2:  # 운동
             week_data["exercise_total"] += total_duration
         elif category == 3:  # 기타
-            week_data["etc_total"] += total_duration
+            week_data["hobby_total"] += total_duration
 
         # 요일별 총합 집계
         for i in range(7):
@@ -357,11 +361,11 @@ def get_my_history_weekly(
     total_duration = (
         week_data["study_total"] +
         week_data["exercise_total"] +
-        week_data["etc_total"]
+        week_data["hobby_total"]
     )
     
     week_data["average"] = int(total_duration / 7 if total_duration else 0)
-    week_data["max"] = max(week_data["study_total"], week_data["exercise_total"], week_data["etc_total"])
+    week_data["max"] = max(week_data["study_total"], week_data["exercise_total"], week_data["hobby_total"])
 
     return week_data
 
@@ -385,7 +389,7 @@ async def get_my_history_monthly(
     - max: int
     - study_total: int
     - exercise_total: int
-    - etc_total: int
+    - hobby_total: int
     """
     
 
@@ -393,7 +397,7 @@ async def get_my_history_monthly(
     days = [0] * 31  # 최대 31일로 초기화
     study_total = 0
     exercise_total = 0
-    etc_total = 0
+    hobby_total = 0
 
     # 해당 월의 기록 조회
     records = db.query(
@@ -417,7 +421,7 @@ async def get_my_history_monthly(
         elif record.category == 2:
             exercise_total += record.duration
         elif record.category == 3:
-            etc_total += record.duration
+            hobby_total += record.duration
 
     # 평균과 최대 값 계산
     total_duration = sum(days)
@@ -430,5 +434,5 @@ async def get_my_history_monthly(
         max=max_duration,
         study_total=study_total,
         exercise_total=exercise_total,
-        etc_total=etc_total
+        hobby_total=hobby_total
     )
