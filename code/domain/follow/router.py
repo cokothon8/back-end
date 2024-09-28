@@ -28,21 +28,32 @@ async def follow(
     db: Session = Depends(get_db)
 ):
     """
-    ## 팔로우하기 엔드포인트
-    - followee : 팔로우당할 사람
-    - current_user : 현재 사용자
+    # 팔로우하기 엔드포인트
+    
+    
+    ## Path Parameter
+    - followee: str 
+    
+    ## Response
+    - username: str
+    
+    ##Response Code
+    - 200: Success
+    - 400: Bad Request  (Cannot follow myself)
+    - 404: Not Found    (Usename is unavailable)
+    - 409: Bad Request  (Already Followed) 
     """
     
     # check username
     user = follow_crud.getUsername(db, followee)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Username is unavailable."
         )
     elif user.id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot follow myself"
         )
         
@@ -70,22 +81,33 @@ async def follow(
     db: Session = Depends(get_db)
 ):
     """
-    ## 팔로우하기 엔드포인트
-    - followee : 팔로우당할 사람
-    - current_user : 현재 사용자
+    # 팔로우하기 엔드포인트
+    
+    
+    ## Path Parameter
+    - followee: str 
+    
+    ## Response
+    - username: str
+    
+    ##Response Code
+    - 200: Success
+    - 400: Bad Request  (Cannot unfollow myself)
+    - 404: Not Found    (Usename is unavailable)
+    - 409: Bad Request  (Already Unfollowed) 
     """
     
     # check username
     user = follow_crud.getUsername(db, followee)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Username is unavailable."
         )
     
     elif user.id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot unfollow myself"
         )
         
