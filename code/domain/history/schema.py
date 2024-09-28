@@ -35,3 +35,12 @@ class Weekly(BaseModel):
     study_total: int
     exercise_total: int
     etc_total: int
+
+
+class Monthly(BaseModel):
+    days: list[int]
+    average: int
+    max: int
+    study_total: int
+    exercise_total: int
+    etc_total: int
