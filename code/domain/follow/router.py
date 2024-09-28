@@ -28,7 +28,7 @@ async def follow(
     db: Session = Depends(get_db)
 ):
     """
-    # 팔로우하기 엔드포인트
+    # 언팔로우 엔드포인트
     
     
     ## Path Parameter
