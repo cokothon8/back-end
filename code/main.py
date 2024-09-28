@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from domain.user import router as user_router
+from domain.history import router as history_router
 
 tags_metadata = [
     {
-        "name": "user",
+        "name": "users",
         "description": "회원 기능",
     },
     {
@@ -36,3 +37,4 @@ app.add_middleware(
 
 
 app.include_router(user_router.router, tags=["users"])
+app.include_router(history_router.router, tags=["history"])
