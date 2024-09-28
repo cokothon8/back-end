@@ -25,7 +25,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(config('REFRESH_TOKEN_EXPIRE_DAYS'))
 SECRET_KEY = config('SECRET_KEY')
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/token")
-oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="/users/refresh-token")
+oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 router = APIRouter(
     prefix="/users",
@@ -104,9 +104,22 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """로그인
+    """# 로그인
 
     refresh_token 만료기간: 365days
+    
+    ## Request Body
+    - username: str
+    - password: str
+    
+    ## Response
+    - access_token: str
+    - token_type: str
+    - refresh_token: str
+    
+    ## Response Code
+    - 200: Success
+    - 401: Unauthorized (Incorrect username or password)
     """
     # check user and password
     user = user_crud.get_user(db, form_data.username)
@@ -158,13 +171,27 @@ def signup(
     _user_create: user_schema.UserCreate,
     db: Session = Depends(get_db)
 ):
-    """회원가입"""
+    """# 회원가입
+    
+    # Request Body
+    - username: 닉네임
+    - password: 패스워드
+    
+    # Response
+    - access_token: str
+    - token_type: str
+    - refresh_token: str
+    
+    # Response Code
+    - 200: Success
+    - 409: Conflict (Username is already taken)
+    """
     
     # check username
     user = user_crud.get_user(db, _user_create.username)
     if user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken"
         )
     
